@@ -8,6 +8,8 @@ import java.util.Optional;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -18,7 +20,7 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.websocket.server.PathParam;
 
 @RestController
-@RequestMapping("/games")
+@RequestMapping("/api/games")
 public class GameController {
 
     private final GameRepository gameRepo;
@@ -51,15 +53,27 @@ public class GameController {
     }
 
     @GetMapping("/{id}")
-    public Game one(@PathVariable Long id, Authentication auth) throws EntityNotFoundException {
+    public GameRequest one(@PathVariable Long id, Authentication auth) throws EntityNotFoundException {
         User user = findUser(auth);
 
         Game game = gameRepo.findById(id).orElseThrow();
 
         if (user.getGames().contains(game)) {
-            return game;
+            return game.toGameRequest();
         }
 
         throw new EntityNotFoundException("No puedes ver este juego");
+    }
+
+    @PostMapping()
+    public GameRequest create(Authentication auth, @RequestBody GamePost post) {
+        Game game = Game.fromGamePost(post);
+        User creator = findUser(auth);
+
+        game.setOwnerUser(creator);
+
+        Game savedGame = gameRepo.saveAndFlush(game);
+
+        return savedGame.toGameRequest();        
     }
 }

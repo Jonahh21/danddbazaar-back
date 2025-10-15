@@ -1,5 +1,6 @@
 package com.dandbazaar.back.games;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -84,6 +85,9 @@ public class Game {
         newGame.currencyNameMultiple = post.getCurrencynamemultiple();
         newGame.image = post.getImage().orElse(null);
         newGame.partyCurrency = post.getPartycurrency();
+
+        newGame.items = new ArrayList<Item>();
+
         newGame.swordPatternRatio = SwordPriceService.getRatio(post.getSwordpriceincurrency());
 
         return newGame;

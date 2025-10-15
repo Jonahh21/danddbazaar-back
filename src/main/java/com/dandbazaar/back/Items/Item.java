@@ -32,6 +32,7 @@ public class Item {
     private String stats;
     @Nullable private String curses;
     private Double quantity;
+    private Boolean hidden;
 
     @ManyToOne
     private Game game;
@@ -48,5 +49,38 @@ public class Item {
             .price(SwordPriceService.getItemPrice(otherGame.getSwordPatternRatio(), realPrice));
 
         return builder.build();
+    }
+
+    public ItemDetailed toItemDetailed(Game otherGame) {
+        ItemDetailed.ItemDetailedBuilder builder = ItemDetailed.builder();
+
+        Double realPrice = this.inGamePrice;
+        builder
+            .id(id)
+            .name(name)
+            .image(Optional.ofNullable(image))
+            .price(SwordPriceService.getItemPrice(otherGame.getSwordPatternRatio(), realPrice))
+            .description(description)
+            .stats(stats)
+            .hidden(hidden)
+            .fromGame(game.getName())
+            .curses(Optional.ofNullable(curses))
+            .quantity(quantity);
+
+        return builder.build();
+    }
+
+    public static Item fromItemPost(ItemPost post) {
+        Item newItem = new Item();
+        newItem.name = post.getName();
+        newItem.inGamePrice = post.getPrice();
+        newItem.image = post.getImage().orElse(null);
+        newItem.description = post.getDescription();
+        newItem.stats = post.getStats();
+        newItem.curses = post.getCurses().orElse(null);
+        newItem.quantity = post.getQuantity();
+        newItem.hidden = post.getHidden();
+
+        return newItem;
     }
 }
