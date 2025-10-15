@@ -1,0 +1,65 @@
+package com.dandbazaar.back.games;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Optional;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.dandbazaar.back.auth.entities.User;
+import com.dandbazaar.back.auth.repositories.UserRepository;
+
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.websocket.server.PathParam;
+
+@RestController
+@RequestMapping("/games")
+public class GameController {
+
+    private final GameRepository gameRepo;
+    private final UserRepository userRepo;
+
+    public User findUser(Authentication auth) throws NoSuchElementException {
+        String username = auth.getName();
+        User user = userRepo.findByUsername(username)
+                .orElseThrow();
+
+        return user;
+    }
+
+    public GameController(GameRepository gameRepo, UserRepository userRepo) {
+        this.gameRepo = gameRepo;
+        this.userRepo = userRepo;
+    }
+
+    @GetMapping()
+    public List<GameRequest> byuser(Authentication auth) {
+        
+        User user = findUser(auth);
+
+        List<Game> games = gameRepo.findByOwnerUser(user)
+                .orElse(new ArrayList<Game>());
+
+        return games.stream()
+                .map(game -> { return game.toGameRequest(); })
+                .toList();
+    }
+
+    @GetMapping("/{id}")
+    public Game one(@PathVariable Long id, Authentication auth) throws EntityNotFoundException {
+        User user = findUser(auth);
+
+        Game game = gameRepo.findById(id).orElseThrow();
+
+        if (user.getGames().contains(game)) {
+            return game;
+        }
+
+        throw new EntityNotFoundException("No puedes ver este juego");
+    }
+}
