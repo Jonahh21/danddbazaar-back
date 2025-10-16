@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.dandbazaar.back.Items.exceptions.NotEnoughMoneyException;
 import com.dandbazaar.back.games.Game;
 import com.dandbazaar.back.games.GameRepository;
 
@@ -53,6 +54,36 @@ public class ItemController {
         itemRepo.saveAndFlush(item);
 
         return item.toItemDetailed(game);
+    }
+
+    @PostMapping("/{gameId}/buy/{itemId}")
+    public ItemDetailed buy(@PathVariable Long gameId, @PathVariable Long itemId) throws NotEnoughMoneyException {
+        Game destination = gamerepo.findById(gameId).orElseThrow();
+        Item purchase = itemRepo.findById(itemId).orElseThrow();
+        Game origin = purchase.getGame();
+        Double destinationPrice = purchase.toTargetCurrency(destination);
+        Double originPrice = purchase.getInGamePrice();
+
+        // Si el destino no tiene dinero
+        if (destination.getPartyCurrency() < destinationPrice) {
+            throw new NotEnoughMoneyException();
+        }
+
+        // Si el destino tiene dinero
+        destination.setPartyCurrency(destination.getPartyCurrency() - destinationPrice);
+        origin.setPartyCurrency(origin.getPartyCurrency() + originPrice);
+        purchase.setGame(destination);
+
+
+        // Guarda el dinero
+
+        gamerepo.save(destination);
+        gamerepo.save(origin);
+
+        // Actualiza la propiedad del item
+        purchase = itemRepo.saveAndFlush(purchase);
+
+        return purchase.toItemDetailed(destination);
     }
 
     private Game findGame(Long gameId) {
