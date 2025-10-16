@@ -9,9 +9,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.HttpClientErrorException.Unauthorized;
 
 import com.dandbazaar.back.auth.entities.User;
 import com.dandbazaar.back.auth.repositories.UserRepository;
@@ -75,5 +77,19 @@ public class GameController {
         Game savedGame = gameRepo.saveAndFlush(game);
 
         return savedGame.toGameRequest();        
+    }
+
+    @PutMapping("/{id}")
+    public GameRequest updateMoney(Authentication auth, @RequestBody CurrencyUpdatePost update, @PathVariable Long id) throws Unauthorized{
+        User user = findUser(auth);
+        Game game = gameRepo.findById(id).orElseThrow();
+
+        if (user.getGames().contains(game)) {
+            game.updateCurrency(update);
+        }
+        
+        game = gameRepo.save(game);
+
+        return game.toGameRequest();
     }
 }

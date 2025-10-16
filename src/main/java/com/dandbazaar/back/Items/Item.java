@@ -1,9 +1,13 @@
 package com.dandbazaar.back.Items;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import com.dandbazaar.back.common.SwordPriceService;
 import com.dandbazaar.back.games.Game;
+import com.dandbazaar.back.Items.registry.PurchaseRegistry;
+import com.dandbazaar.back.Items.registry.PurchaseRegistrySimple;
 
 import jakarta.annotation.Nullable;
 import jakarta.persistence.Entity;
@@ -11,13 +15,16 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Getter @Setter @NoArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
 @Table(name = "items")
 public class Item {
 
@@ -27,18 +34,24 @@ public class Item {
 
     private String name;
     private Double inGamePrice;
-    @Nullable private String image;
+    @Nullable
+    private String image;
     private String description;
     private String stats;
-    @Nullable private String curses;
+    @Nullable
+    private String curses;
     private Double quantity;
     private Boolean hidden;
 
     @ManyToOne
     private Game game;
 
+    @OneToMany(mappedBy = "item")
+    private List<PurchaseRegistry> purchaseHistorial;
+
     /**
-     * Convierte el precio de este ítem desde la economía de su juego origen a la economía de
+     * Convierte el precio de este ítem desde la economía de su juego origen a la
+     * economía de
      * {@code otherGame} utilizando los "ratios" basados en el patrón (espada).
      *
      * ratio = PRECIO_ESPADA_REAL / precioInGame
@@ -59,27 +72,32 @@ public class Item {
         Double targetRatio = otherGame.getSwordPatternRatio();
 
         if (originRatio == null || targetRatio == null || originRatio == 0 || targetRatio == 0) {
-            // Si falta ratio o es 0, devolvemos null para indicar que la conversión no es posible
+            // Si falta ratio o es 0, devolvemos null para indicar que la conversión no es
+            // posible
             return null;
         }
 
-        return inGamePrice * ( originRatio / targetRatio);
+        return inGamePrice * (originRatio / targetRatio);
     }
-    
+
     public ItemSimple toItemSimple(Game otherGame) {
         ItemSimple.ItemSimpleBuilder builder = ItemSimple.builder();
 
         builder
-            .id(id)
-            .name(name)
-            .image(Optional.ofNullable(image))
-            .price(toTargetCurrency(otherGame));
+                .id(id)
+                .name(name)
+                .image(Optional.ofNullable(image))
+                .price(toTargetCurrency(otherGame));
 
         return builder.build();
     }
 
     public ItemDetailed toItemDetailed(Game otherGame) {
         ItemDetailed.ItemDetailedBuilder builder = ItemDetailed.builder();
+
+        List<PurchaseRegistrySimple> historial = purchaseHistorial.stream()
+            .map(reg -> reg.toSimple())
+            .toList();
 
         builder
             .id(id)
@@ -91,7 +109,9 @@ public class Item {
             .hidden(hidden)
             .fromGame(game.getName())
             .curses(Optional.ofNullable(curses))
-            .quantity(quantity);
+            .quantity(quantity)
+            .purchasehistory(historial);
+            // You may want to add .historial(historial) if ItemDetailed has such a field
 
         return builder.build();
     }
@@ -106,6 +126,7 @@ public class Item {
         newItem.curses = post.getCurses().orElse(null);
         newItem.quantity = post.getQuantity();
         newItem.hidden = post.getHidden();
+        newItem.purchaseHistorial = new ArrayList<PurchaseRegistry>();
 
         return newItem;
     }

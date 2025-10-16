@@ -1,9 +1,12 @@
 package com.dandbazaar.back.Items;
 
+import java.sql.Date;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.dandbazaar.back.Items.exceptions.NotEnoughMoneyException;
+import com.dandbazaar.back.Items.registry.PurchaseRegistry;
+import com.dandbazaar.back.Items.registry.PurchaseRegistryRepository;
 import com.dandbazaar.back.games.Game;
 import com.dandbazaar.back.games.GameRepository;
 
@@ -24,6 +29,9 @@ public class ItemController {
 
     @Autowired
     ItemRepository itemRepo;
+
+    @Autowired
+    PurchaseRegistryRepository prRepo;
     
     @GetMapping("/{gameId}/inventory")
     public List<ItemSimple> inventory(@PathVariable Long gameId) {
@@ -44,6 +52,14 @@ public class ItemController {
             .toList();
     }
 
+    @GetMapping("/{gameId}/store/{itemId}")
+    public ItemDetailed one(@PathVariable Long gameId, @PathVariable Long itemId) {
+        Game game = findGame(gameId);
+        Item item = findItem(itemId);
+
+        return item.toItemDetailed(game);
+    }
+
     @PostMapping("/{gameId}/create")
     public ItemDetailed create(@PathVariable Long gameId, @RequestBody ItemPost post) {
         Game game = findGame(gameId);
@@ -58,8 +74,8 @@ public class ItemController {
 
     @PostMapping("/{gameId}/buy/{itemId}")
     public ItemDetailed buy(@PathVariable Long gameId, @PathVariable Long itemId) throws NotEnoughMoneyException {
-        Game destination = gamerepo.findById(gameId).orElseThrow();
-        Item purchase = itemRepo.findById(itemId).orElseThrow();
+        Game destination = findGame(gameId);
+        Item purchase = findItem(itemId);
         Game origin = purchase.getGame();
         Double destinationPrice = purchase.toTargetCurrency(destination);
         Double originPrice = purchase.getInGamePrice();
@@ -73,6 +89,7 @@ public class ItemController {
         destination.setPartyCurrency(destination.getPartyCurrency() - destinationPrice);
         origin.setPartyCurrency(origin.getPartyCurrency() + originPrice);
         purchase.setGame(destination);
+        purchase.setInGamePrice(destinationPrice);
 
 
         // Guarda el dinero
@@ -80,13 +97,31 @@ public class ItemController {
         gamerepo.save(destination);
         gamerepo.save(origin);
 
+        
         // Actualiza la propiedad del item
-        purchase = itemRepo.saveAndFlush(purchase);
+        itemRepo.save(purchase);
 
+        // Crea un registro
+        PurchaseRegistry newRegistry = new PurchaseRegistry();
+        newRegistry.setOrigin(origin);
+        newRegistry.setDestination(destination);
+        newRegistry.setItem(purchase);
+        newRegistry.setPurchasedat(new java.sql.Date(System.currentTimeMillis()));
+
+        prRepo.saveAndFlush(newRegistry);
+        
         return purchase.toItemDetailed(destination);
     }
 
     private Game findGame(Long gameId) {
-        return gamerepo.findById(gameId).orElseThrow();
+        return findInRepo(gamerepo, gameId);
+    }
+
+    private Item findItem(Long itemId) {
+        return findInRepo(itemRepo, itemId);
+    }
+
+    private <T, I> T findInRepo(JpaRepository<T, I> repo, I id) {
+        return repo.findById(id).orElseThrow();
     }
 }
