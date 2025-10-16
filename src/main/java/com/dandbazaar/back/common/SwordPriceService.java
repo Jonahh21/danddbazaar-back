@@ -10,8 +10,8 @@ public class SwordPriceService {
         return SWORD_PRICE / ingameprice;
     }
 
-    public static Double getItemPrice(Double patternratio, Double itempriceinmarket) {
-        return patternratio * itempriceinmarket;
+    public static Double getOriginalSwordPrice(Double ratio) {
+        return SWORD_PRICE * ratio;
     }
     
 }

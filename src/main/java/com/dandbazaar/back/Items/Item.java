@@ -36,17 +36,44 @@ public class Item {
 
     @ManyToOne
     private Game game;
+
+    /**
+     * Convierte el precio de este ítem desde la economía de su juego origen a la economía de
+     * {@code otherGame} utilizando los "ratios" basados en el patrón (espada).
+     *
+     * ratio = PRECIO_ESPADA_REAL / precioInGame
+     *
+     * Para mantener la equivalencia del valor real, la fórmula correcta es:
+     * precioDestino = precioOrigen * (ratioOrigen / ratioDestino)
+     *
+     * Ejemplo:
+     * Juego A: espada = 20 -> ratioA = 20 / 20 = 1.0
+     * Juego B: espada = 299.99 -> ratioB = 20 / 299.99 ≈ 0.0667
+     * Si un objeto vale 119.95 en Juego A, su valor en Juego B será:
+     * 119.95 * (1.0 / 0.0667) ≈ 1798.95
+     *
+     * Esta implementación aplica exactamente esa fórmula.
+     */
+    public Double toTargetCurrency(Game otherGame) {
+        Double originRatio = this.game.getSwordPatternRatio();
+        Double targetRatio = otherGame.getSwordPatternRatio();
+
+        if (originRatio == null || targetRatio == null || originRatio == 0 || targetRatio == 0) {
+            // Si falta ratio o es 0, devolvemos null para indicar que la conversión no es posible
+            return null;
+        }
+
+        return inGamePrice * ( originRatio / targetRatio);
+    }
     
     public ItemSimple toItemSimple(Game otherGame) {
         ItemSimple.ItemSimpleBuilder builder = ItemSimple.builder();
-
-        Double realPrice = this.inGamePrice * game.getSwordPatternRatio();
 
         builder
             .id(id)
             .name(name)
             .image(Optional.ofNullable(image))
-            .price(SwordPriceService.getItemPrice(otherGame.getSwordPatternRatio(), realPrice));
+            .price(toTargetCurrency(otherGame));
 
         return builder.build();
     }
@@ -54,12 +81,11 @@ public class Item {
     public ItemDetailed toItemDetailed(Game otherGame) {
         ItemDetailed.ItemDetailedBuilder builder = ItemDetailed.builder();
 
-        Double realPrice = this.inGamePrice;
         builder
             .id(id)
             .name(name)
             .image(Optional.ofNullable(image))
-            .price(SwordPriceService.getItemPrice(otherGame.getSwordPatternRatio(), realPrice))
+            .price(toTargetCurrency(otherGame))
             .description(description)
             .stats(stats)
             .hidden(hidden)
