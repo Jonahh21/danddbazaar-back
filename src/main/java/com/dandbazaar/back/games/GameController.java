@@ -88,6 +88,8 @@ public class GameController {
             game.updateCurrency(update);
         }
         
+        
+
         game = gameRepo.save(game);
 
         return game.toGameRequest();

@@ -6,6 +6,8 @@ import java.util.Optional;
 
 import com.dandbazaar.back.common.SwordPriceService;
 import com.dandbazaar.back.games.Game;
+import com.dandbazaar.back.Items.lore.Lore;
+import com.dandbazaar.back.Items.lore.LoreRequest;
 import com.dandbazaar.back.Items.registry.PurchaseRegistry;
 import com.dandbazaar.back.Items.registry.PurchaseRegistrySimple;
 
@@ -48,6 +50,9 @@ public class Item {
 
     @OneToMany(mappedBy = "item")
     private List<PurchaseRegistry> purchaseHistorial;
+    private List<Lore> lore;
+
+    @OneToMany(mappedBy = "loreditem")
 
     /**
      * Convierte el precio de este ítem desde la economía de su juego origen a la
@@ -99,6 +104,8 @@ public class Item {
             .map(reg -> reg.toSimple())
             .toList();
 
+        List<LoreRequest> loreHistory = lore.stream().map(l -> l.toSimple()).toList();
+
         builder
             .id(id)
             .name(name)
@@ -110,8 +117,8 @@ public class Item {
             .fromGame(game.getName())
             .curses(Optional.ofNullable(curses))
             .quantity(quantity)
-            .purchasehistory(historial);
-            // You may want to add .historial(historial) if ItemDetailed has such a field
+            .purchasehistory(historial)
+            .lore(loreHistory);
 
         return builder.build();
     }
@@ -127,6 +134,7 @@ public class Item {
         newItem.quantity = post.getQuantity();
         newItem.hidden = post.getHidden();
         newItem.purchaseHistorial = new ArrayList<PurchaseRegistry>();
+        newItem.lore = new ArrayList<Lore>();
 
         return newItem;
     }

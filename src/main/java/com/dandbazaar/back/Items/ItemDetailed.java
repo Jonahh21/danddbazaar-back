@@ -3,6 +3,7 @@ package com.dandbazaar.back.Items;
 import java.util.List;
 import java.util.Optional;
 
+import com.dandbazaar.back.Items.lore.LoreRequest;
 import com.dandbazaar.back.Items.registry.PurchaseRegistrySimple;
 
 import lombok.Builder;
@@ -22,6 +23,7 @@ public class ItemDetailed {
     private Boolean hidden;
 
     private List<PurchaseRegistrySimple> purchasehistory;
+    private List<LoreRequest> lore;
 
     private Double quantity;
 }

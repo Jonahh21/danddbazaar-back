@@ -73,13 +73,16 @@ public class ItemController {
     }
 
     @PostMapping("/{gameId}/buy/{itemId}")
-    public ItemDetailed buy(@PathVariable Long gameId, @PathVariable Long itemId) throws NotEnoughMoneyException {
+    public ItemDetailed buy(@PathVariable Long gameId, @PathVariable Long itemId) throws NotEnoughMoneyException, Exception {
         Game destination = findGame(gameId);
         Item purchase = findItem(itemId);
         Game origin = purchase.getGame();
         Double destinationPrice = purchase.toTargetCurrency(destination);
         Double originPrice = purchase.getInGamePrice();
 
+        if(destination.equals(origin)) {
+            throw new Exception("No puedes comprar tu propio Item");
+        }
         // Si el destino no tiene dinero
         if (destination.getPartyCurrency() < destinationPrice) {
             throw new NotEnoughMoneyException();
