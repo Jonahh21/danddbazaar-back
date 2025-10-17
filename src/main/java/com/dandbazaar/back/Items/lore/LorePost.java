@@ -16,6 +16,8 @@ public class LorePost {
     private String description;
     private Double pricechange;
 
+    private String image;
+
     private String stats;
     private Optional<String> curses;
 }

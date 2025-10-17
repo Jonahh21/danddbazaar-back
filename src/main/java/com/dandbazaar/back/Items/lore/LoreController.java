@@ -50,7 +50,7 @@ public class LoreController {
     }
 
     @GetMapping("/{itemId}")
-    public List<LoreRequest> fromItem(@PathVariable Long itemId, Authentication auth){
+    public List<LoreRequest> getFromItem(@PathVariable Long itemId, Authentication auth){
         User user = findUser(auth);
         Item item = findItem(itemId);
 
@@ -58,7 +58,7 @@ public class LoreController {
     }
 
     @PostMapping("/{itemId}")
-    public LoreRequest fromItem(@PathVariable Long itemId, Authentication auth, @RequestBody LorePost post) throws Exception{
+    public LoreRequest createForItem(@PathVariable Long itemId, Authentication auth, @RequestBody LorePost post) throws Exception{
         User user = findUser(auth);
         Item item = findItem(itemId);
 
@@ -67,6 +67,14 @@ public class LoreController {
         }
 
         Lore lore = Lore.fromLorePost(post, item);
+
+        item.setName(post.getName());
+        item.setStats(post.getStats());
+        item.setCurses(post.getCurses().orElse(null));
+        item.setDescription(post.getDescription());
+        item.setInGamePrice(item.getInGamePrice() + post.getPricechange());
+        item.setStats(post.getStats());
+        item.setImage(post.getImage());
 
         lore = loreRepo.saveAndFlush(lore);
 

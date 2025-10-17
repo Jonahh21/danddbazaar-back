@@ -50,9 +50,8 @@ public class Item {
 
     @OneToMany(mappedBy = "item")
     private List<PurchaseRegistry> purchaseHistorial;
+    @OneToMany(mappedBy = "loredItem")
     private List<Lore> lore;
-
-    @OneToMany(mappedBy = "loreditem")
 
     /**
      * Convierte el precio de este ítem desde la economía de su juego origen a la
