@@ -12,12 +12,15 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.dandbazaar.back.Items.Item;
 import com.dandbazaar.back.Items.ItemRepository;
 import com.dandbazaar.back.auth.entities.User;
 import com.dandbazaar.back.auth.repositories.UserRepository;
+import com.dandbazaar.back.common.pagination.Paginate;
+import com.dandbazaar.back.common.pagination.PaginationBuilder;
 
 @RestController
 @RequestMapping("/api/lore")
@@ -39,14 +42,25 @@ public class LoreController {
 
     @Autowired
     private UserRepository userRepo;
+
+    @Autowired
+    private PaginationBuilder pBuilder;
     
     @GetMapping
-    public List<LoreRequest> all(){
+    public Paginate<LoreRequest> all(@RequestParam(defaultValue = "1") Integer page){
         List<Lore> allLore = loreRepo.findAll();
 
         // sort by newest
-        allLore.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
-        return allLore.stream().map(lore -> lore.toSimple()).toList();
+        allLore.sort((a, b) -> {
+            // newest first. handle possible null createdAt values (treat null as oldest)
+            java.util.Date aDate = a.getCreatedAt();
+            java.util.Date bDate = b.getCreatedAt();
+            if (aDate == null && bDate == null) return 0;
+            if (aDate == null) return 1; // a is older -> place after b
+            if (bDate == null) return -1; // b is older -> place after a
+            return bDate.compareTo(aDate);
+        });
+        return pBuilder.paginate(allLore.stream().map(lore -> lore.toSimple()).toList(), page);
     }
 
     @GetMapping("/{itemId}")

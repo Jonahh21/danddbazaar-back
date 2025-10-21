@@ -2,7 +2,7 @@ package com.dandbazaar.back.Items.lore;
 
 import java.sql.Date;
 import java.text.DecimalFormat;
-import java.text.Format;
+import java.time.Instant;
 
 import com.dandbazaar.back.Items.Item;
 import com.dandbazaar.back.games.Game;
@@ -53,6 +53,8 @@ public class Lore {
         newLore.thenDescription = post.getDescription();
         newLore.thenStats = post.getStats();
         newLore.thenCurses = post.getCurses().orElse(null);
+        newLore.thenPrice = item.getInGamePrice();
+        newLore.createdAt = new java.sql.Date(Instant.now().toEpochMilli());
 
         newLore.priceChange = post.getPricechange();
 
@@ -81,14 +83,11 @@ public class Lore {
 
         DecimalFormat df = new DecimalFormat("#.00");
 
-        String prefix = "";
-
-        if (priceChange < 0) {
-            prefix = "-";
-        } else {
-            prefix = "+";
+        if (priceChange == null) {
+            return "";
         }
 
+        String prefix = priceChange < 0 ? "-" : "+";
 
         return prefix + df.format(priceChange) + " " + originGame.getCurrencysymbol();
     }
@@ -96,13 +95,11 @@ public class Lore {
     private String getThenPrice() {
         DecimalFormat df = new DecimalFormat("#.00");
 
-        String prefix = "";
-
-        if (priceChange < 0) {
-            prefix = "-";
-        } else {
-            prefix = "+";
+        if (thenPrice == null) {
+            return "";
         }
+
+        String prefix = (priceChange != null && priceChange < 0) ? "-" : "+";
 
         return prefix + df.format(thenPrice) + " " + originGame.getCurrencysymbol();
     }

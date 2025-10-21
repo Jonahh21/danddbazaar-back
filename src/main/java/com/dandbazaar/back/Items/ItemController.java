@@ -12,11 +12,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.dandbazaar.back.Items.exceptions.NotEnoughMoneyException;
 import com.dandbazaar.back.Items.registry.PurchaseRegistry;
 import com.dandbazaar.back.Items.registry.PurchaseRegistryRepository;
+import com.dandbazaar.back.common.pagination.Paginate;
+import com.dandbazaar.back.common.pagination.PaginationBuilder;
 import com.dandbazaar.back.games.Game;
 import com.dandbazaar.back.games.GameRepository;
 
@@ -32,6 +35,9 @@ public class ItemController {
 
     @Autowired
     PurchaseRegistryRepository prRepo;
+
+    @Autowired
+    PaginationBuilder pBuilder;
     
     @GetMapping("/{gameId}/inventory")
     public List<ItemSimple> inventory(@PathVariable Long gameId) {
@@ -43,13 +49,14 @@ public class ItemController {
     }
 
     @GetMapping("/{gameId}/store")
-    public List<ItemSimple> all(@PathVariable Long gameId) {
+    public Paginate<ItemSimple> all(@PathVariable Long gameId, @RequestParam(defaultValue = "1") Integer page) {
         Game game = findGame(gameId);
 
-        return itemRepo.findAll().stream()
+        List<ItemSimple> allItems = itemRepo.findAll().stream()
             .filter(item -> !item.getHidden())
             .map(item -> item.toItemSimple(game))
             .toList();
+        return pBuilder.paginate(allItems, page);
     }
 
     @GetMapping("/{gameId}/store/{itemId}")
