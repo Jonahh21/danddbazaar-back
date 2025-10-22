@@ -55,9 +55,11 @@ public class Game {
     private Double swordPatternRatio;
 
     @ManyToOne
+    @ToString.Exclude
     private User ownerUser;
 
     @OneToMany(mappedBy = "game")
+    @ToString.Exclude
     private List<Item> items;
 
     public GameRequest toGameRequest() {

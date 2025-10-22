@@ -66,10 +66,9 @@ public class GameController {
             log.info("Usuario encontrado: " + user.toString());
         }
 
-        List<Game> games = gameRepo.findByOwnerUser(user)
-                .orElse(new ArrayList<Game>());
+        List<Game> games = user.getGames();
 
-        log.info("La cantidad de juegos qu eel usuario tiene es: " + games.size());
+        log.info("La cantidad de juegos que el usuario tiene es: " + games.size());
 
         return games.stream()
                 .map(game -> { return game.toGameRequest(); })

@@ -46,5 +46,6 @@ public class User implements UserDetails {
 
     @Nullable
     @OneToMany(mappedBy = "ownerUser")
+    @ToString.Exclude
     private List<Game> games;
 }

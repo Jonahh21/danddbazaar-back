@@ -1,5 +1,7 @@
 package com.dandbazaar.back.auth.services;
 
+import java.util.ArrayList;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -34,6 +36,7 @@ public class UserService implements UserDetailsService {
         user.setUsername(username);
         user.setPassword(passwordEncoder.encode(password));
         user.setEmail(email);
-        return userRepo.save(user);
+        user.setGames(new ArrayList<>());
+        return userRepo.saveAndFlush(user);
     }
 }
