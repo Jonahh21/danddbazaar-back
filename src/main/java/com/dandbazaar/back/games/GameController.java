@@ -20,18 +20,30 @@ import com.dandbazaar.back.auth.repositories.UserRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.websocket.server.PathParam;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/api/games")
+@Slf4j
 public class GameController {
+
+    
 
     private final GameRepository gameRepo;
     private final UserRepository userRepo;
 
     public User findUser(Authentication auth) throws NoSuchElementException {
+        log.info("Obteniendo nombre del usuario...");
+        log.info(auth.getName());
+        User guestUser = new User();
+        guestUser.setEmail("guest@none.es");
+        guestUser.setId(0L);
+        guestUser.setUsername("Guest");
+        guestUser.setGames(new ArrayList<Game>());
+
         String username = auth.getName();
         User user = userRepo.findByUsername(username)
-                .orElseThrow();
+                .orElse(guestUser);
 
         return user;
     }
@@ -43,11 +55,21 @@ public class GameController {
 
     @GetMapping()
     public List<GameRequest> byuser(Authentication auth) {
+
+        log.info("Buscando al usuario: " + auth.getName());
         
         User user = findUser(auth);
 
+        if (user.getId() == 0) {
+            log.error("No se encontró el usuario");
+        } else {
+            log.info("Usuario encontrado: " + user.toString());
+        }
+
         List<Game> games = gameRepo.findByOwnerUser(user)
                 .orElse(new ArrayList<Game>());
+
+        log.info("La cantidad de juegos qu eel usuario tiene es: " + games.size());
 
         return games.stream()
                 .map(game -> { return game.toGameRequest(); })

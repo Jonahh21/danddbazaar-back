@@ -1,5 +1,6 @@
 package com.dandbazaar.back.Items.lore;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -21,15 +22,23 @@ import com.dandbazaar.back.auth.entities.User;
 import com.dandbazaar.back.auth.repositories.UserRepository;
 import com.dandbazaar.back.common.pagination.Paginate;
 import com.dandbazaar.back.common.pagination.PaginationBuilder;
+import com.dandbazaar.back.games.Game;
 
 @RestController
 @RequestMapping("/api/lore")
 public class LoreController {
 
     public User findUser(Authentication auth) throws NoSuchElementException {
+
+        User guestUser = new User();
+        guestUser.setEmail("guest@none.es");
+        guestUser.setId(0L);
+        guestUser.setUsername("Guest");
+        guestUser.setGames(new ArrayList<Game>());
+
         String username = auth.getName();
         User user = userRepo.findByUsername(username)
-                .orElseThrow();
+                .orElse(guestUser);
 
         return user;
     }
@@ -64,8 +73,7 @@ public class LoreController {
     }
 
     @GetMapping("/{itemId}")
-    public List<LoreRequest> getFromItem(@PathVariable Long itemId, Authentication auth){
-        User user = findUser(auth);
+    public List<LoreRequest> getFromItem(@PathVariable Long itemId){
         Item item = findItem(itemId);
 
         return item.getLore().stream().map(l -> l.toSimple()).toList();

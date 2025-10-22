@@ -1,5 +1,6 @@
 package com.dandbazaar.back.auth.services;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -11,6 +12,7 @@ import com.dandbazaar.back.auth.repositories.UserRepository;
 
 @Service
 public class UserService implements UserDetailsService {
+
     private final UserRepository userRepo;
     private final PasswordEncoder passwordEncoder;
 
