@@ -5,9 +5,11 @@ import java.util.List;
 import java.util.Optional;
 
 import com.dandbazaar.back.Items.Item;
+import com.dandbazaar.back.Items.registry.PurchaseRegistry;
 import com.dandbazaar.back.auth.entities.User;
 import com.dandbazaar.back.common.SwordPriceService;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -58,9 +60,15 @@ public class Game {
     @ToString.Exclude
     private User ownerUser;
 
-    @OneToMany(mappedBy = "game")
+    @OneToMany(mappedBy = "game", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
     private List<Item> items;
+
+    @OneToMany(mappedBy = "origin", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PurchaseRegistry> beingOrigin;
+
+    @OneToMany(mappedBy = "destination", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PurchaseRegistry> beingDestination;
 
     public GameRequest toGameRequest() {
         GameRequest.GameRequestBuilder builder = GameRequest.builder();
@@ -89,6 +97,8 @@ public class Game {
         newGame.partyCurrency = post.getPartycurrency();
 
         newGame.items = new ArrayList<Item>();
+        newGame.beingOrigin = new ArrayList<PurchaseRegistry>();
+        newGame.beingDestination = new ArrayList<PurchaseRegistry>();
 
         newGame.swordPatternRatio = SwordPriceService.getRatio(post.getSwordpriceincurrency());
 

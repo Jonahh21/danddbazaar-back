@@ -7,6 +7,7 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,6 +24,9 @@ import com.dandbazaar.back.common.pagination.PaginationBuilder;
 import com.dandbazaar.back.games.Game;
 import com.dandbazaar.back.games.GameRepository;
 
+import jakarta.persistence.EntityManager;
+import jakarta.transaction.Transactional;
+
 @RestController
 @RequestMapping("/api/games")
 public class ItemController {
@@ -37,6 +41,9 @@ public class ItemController {
     PurchaseRegistryRepository prRepo;
 
     @Autowired
+    EntityManager eman;
+
+    @Autowired
     PaginationBuilder pBuilder;
     
     @GetMapping("/{gameId}/inventory")
@@ -45,6 +52,25 @@ public class ItemController {
 
         return game.getItems().stream()
             .map(item -> item.toItemSimple(game))
+            .toList();
+    }
+
+    @Transactional
+    @DeleteMapping("/{gameId}/inventory/{itemId}")
+    public List<ItemSimple> deleteItem(@PathVariable Long gameId, @PathVariable Long itemId) throws Exception {
+        Game game = findGame(gameId);
+
+        Item item = findItem(itemId);
+
+        if (!game.getItems().contains(item)) {
+            throw new Exception("El item no existe en este juego");
+        }
+
+        game.getItems().remove(item);
+        gamerepo.save(game);
+
+        return game.getItems().stream()
+            .map(i -> i.toItemSimple(game))
             .toList();
     }
 

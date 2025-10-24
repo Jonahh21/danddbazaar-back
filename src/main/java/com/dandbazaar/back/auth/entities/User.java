@@ -9,6 +9,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import com.dandbazaar.back.games.Game;
 
 import io.micrometer.common.lang.Nullable;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -45,7 +46,7 @@ public class User implements UserDetails {
     @Override public boolean isEnabled() { return true; }
 
     @Nullable
-    @OneToMany(mappedBy = "ownerUser")
+    @OneToMany(mappedBy = "ownerUser", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
     private List<Game> games;
 }

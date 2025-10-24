@@ -8,6 +8,7 @@ import com.dandbazaar.back.Items.Item;
 import com.dandbazaar.back.games.Game;
 
 import io.micrometer.common.lang.Nullable;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -25,10 +26,13 @@ public class Lore {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     @ManyToOne
     private Game originGame;
+
     @ManyToOne
     private Item loredItem;
+
     private String text;
     private Date createdAt;
 

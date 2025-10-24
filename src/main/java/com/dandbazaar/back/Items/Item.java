@@ -12,6 +12,7 @@ import com.dandbazaar.back.Items.registry.PurchaseRegistry;
 import com.dandbazaar.back.Items.registry.PurchaseRegistrySimple;
 
 import jakarta.annotation.Nullable;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -48,9 +49,9 @@ public class Item {
     @ManyToOne
     private Game game;
 
-    @OneToMany(mappedBy = "item")
+    @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PurchaseRegistry> purchaseHistorial;
-    @OneToMany(mappedBy = "loredItem")
+    @OneToMany(mappedBy = "loredItem", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Lore> lore;
 
     /**

@@ -5,7 +5,11 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -14,9 +18,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.HttpClientErrorException.Unauthorized;
+import org.springframework.web.servlet.function.EntityResponse;
 
+import com.dandbazaar.back.Items.Item;
+import com.dandbazaar.back.Items.ItemRepository;
 import com.dandbazaar.back.auth.entities.User;
 import com.dandbazaar.back.auth.repositories.UserRepository;
+import com.dandbazaar.back.common.reporegister.MasterRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.websocket.server.PathParam;
@@ -28,9 +36,14 @@ import lombok.extern.slf4j.Slf4j;
 public class GameController {
 
     
+    @Autowired
+    private GameRepository gameRepo;
 
-    private final GameRepository gameRepo;
-    private final UserRepository userRepo;
+    @Autowired
+    private UserRepository userRepo;
+
+    @Autowired
+    private ItemRepository itemRepo;
 
     public User findUser(Authentication auth) throws NoSuchElementException {
         log.info("Obteniendo nombre del usuario...");
@@ -46,11 +59,6 @@ public class GameController {
                 .orElse(guestUser);
 
         return user;
-    }
-
-    public GameController(GameRepository gameRepo, UserRepository userRepo) {
-        this.gameRepo = gameRepo;
-        this.userRepo = userRepo;
     }
 
     @GetMapping()
@@ -114,5 +122,38 @@ public class GameController {
         game = gameRepo.save(game);
 
         return game.toGameRequest();
+    }
+
+    @DeleteMapping("/delete/{originId}/{destinationId}")
+    public GameRequest deleteGameAndTransfer(Authentication auth, @PathVariable Long originId, @PathVariable Long destinationId) throws Exception {
+        User user = userRepo.findByUsername(auth.getName())
+            .orElseThrow();
+
+        Game origin = gameRepo.findById(originId)
+            .orElseThrow();
+        Game destination = gameRepo.findById(destinationId)
+            .orElseThrow();
+
+        List<Item> items = origin.getItems();
+
+        if (!user.getGames().contains(origin) || !user.getGames().contains(destination)) {
+            throw new Exception("No tienes los juegos");
+        }
+
+        items = items.stream().map(item -> {
+            item.setInGamePrice(item.toTargetCurrency(destination));
+            item.setGame(destination);
+
+            return item;
+        }).toList();
+
+        itemRepo.saveAllAndFlush(items);
+        Game updatedRepo = gameRepo.findById(destinationId)
+            .orElseThrow();
+
+        gameRepo.delete(origin);
+
+
+        return updatedRepo.toGameRequest();
     }
 }
