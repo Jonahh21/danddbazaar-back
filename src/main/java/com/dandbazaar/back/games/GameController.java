@@ -22,11 +22,15 @@ import org.springframework.web.servlet.function.EntityResponse;
 
 import com.dandbazaar.back.Items.Item;
 import com.dandbazaar.back.Items.ItemRepository;
+import com.dandbazaar.back.Items.registry.PurchaseRegistry;
+import com.dandbazaar.back.Items.registry.PurchaseRegistryRepository;
 import com.dandbazaar.back.auth.entities.User;
 import com.dandbazaar.back.auth.repositories.UserRepository;
 import com.dandbazaar.back.common.reporegister.MasterRepository;
 
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 import jakarta.websocket.server.PathParam;
 import lombok.extern.slf4j.Slf4j;
 
@@ -40,6 +44,12 @@ public class GameController {
 
     @Autowired
     private UserRepository userRepo;
+
+    @Autowired
+    private PurchaseRegistryRepository purchaseRepo;
+
+    @Autowired
+    EntityManager eman;
 
     @Autowired
     private ItemRepository itemRepo;
@@ -124,50 +134,70 @@ public class GameController {
         return game.toGameRequest();
     }
 
+    @Transactional
     @DeleteMapping("/delete/{originId}/{destinationId}")
-    public GameRequest deleteGameAndTransfer(Authentication auth, @PathVariable Long originId,
+    public GameRequest deleteGameAndTransfer(Authentication auth,
+            @PathVariable Long originId,
             @PathVariable Long destinationId) throws Exception {
-        User user = userRepo.findByUsername(auth.getName())
-                .orElseThrow();
 
-        log.info("Usuario encontrado: " + user.getUsername());
+        log.info("=== Iniciando deleteGameAndTransfer ===");
 
-        Game origin = gameRepo.findById(originId)
-                .orElseThrow();
+        User user = userRepo.findByUsername(auth.getName()).orElseThrow();
+        log.info("Usuario encontrado: {}", user.getUsername());
 
-        log.info("Origin encontrado: " + origin.getName());
-        Game destination = gameRepo.findById(destinationId)
-                .orElseThrow();
+        Game origin = gameRepo.findById(originId).orElseThrow();
+        Game destination = gameRepo.findById(destinationId).orElseThrow();
+        log.info("Juego origen encontrado: {}", origin.getName());
+        log.info("Juego destino encontrado: {}", destination.getName());
 
-        log.info("Destino encontrado: " + destination.getName());
+        // 1️⃣ Transferir Items
+        List<Item> items = new ArrayList<>(origin.getItems());
+        log.info("Items en origin antes de transferir: {}", items.size());
 
-        List<Item> items = origin.getItems();
-
-        log.info("El origen tiene " + items.size() + " juegos");
-
-        if (!user.getGames().contains(origin) || !user.getGames().contains(destination)) {
-            log.error("El usuario no tiene los juegos");
-            throw new Exception("No tienes los juegos");
-        }
-
-        items = items.stream().map(item -> {
+        for (Item item : items) {
             item.setInGamePrice(item.toTargetCurrency(destination));
             item.setGame(destination);
 
-            return item;
-        }).toList();
+            // mover de las listas de Hibernate
+            origin.getItems().remove(item);
+            destination.getItems().add(item);
 
-        log.info("Propiedades de los items cambiadas, comenzando guardado...");
+            log.info("Item {} transferido al destino", item.getName());
+        }
+
         itemRepo.saveAllAndFlush(items);
-        log.info("Mensajes guardados");
-        Game updatedRepo = gameRepo.findById(destinationId)
-                .orElseThrow();
-        log.info("Juego actualizado");
+        log.info("Todos los items transferidos y flush ejecutado");
 
+        // 2️⃣ Transferir / eliminar PurchaseRegistry del origin
+        List<PurchaseRegistry> originPurchases = new ArrayList<>(origin.getBeingOrigin());
+        for (PurchaseRegistry pr : originPurchases) {
+            // Si querés transferirlos al destination:
+            pr.setOrigin(destination);
+            destination.getBeingOrigin().add(pr);
+            origin.getBeingOrigin().remove(pr);
+            log.info("PurchaseRegistry {} transferido (origin)", pr.getId());
+        }
+
+        List<PurchaseRegistry> destinationPurchases = new ArrayList<>(origin.getBeingDestination());
+        for (PurchaseRegistry pr : destinationPurchases) {
+            pr.setDestination(destination);
+            destination.getBeingDestination().add(pr);
+            origin.getBeingDestination().remove(pr);
+            log.info("PurchaseRegistry {} transferido (destination)", pr.getId());
+        }
+
+        purchaseRepo.flush();
+        log.info("Todos los PurchaseRegistry transferidos y flush ejecutado");
+
+        // 3️⃣ Borrar Game origen
         gameRepo.delete(origin);
-        log.info("Juego origen eliminado");
-        
-        log.info("Enviando repositorio actualizado");
-        return updatedRepo.toGameRequest();
+        gameRepo.flush();
+        log.info("Juego origen '{}' eliminado", origin.getName());
+
+        // 4️⃣ Devolver el game destino actualizado
+        Game updatedDestination = gameRepo.findById(destinationId).orElseThrow();
+        log.info("=== deleteGameAndTransfer completado ===");
+        return updatedDestination.toGameRequest();
     }
+
 }

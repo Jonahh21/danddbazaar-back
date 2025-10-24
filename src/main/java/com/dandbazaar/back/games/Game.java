@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 import com.dandbazaar.back.Items.Item;
+import com.dandbazaar.back.Items.lore.Lore;
 import com.dandbazaar.back.Items.registry.PurchaseRegistry;
 import com.dandbazaar.back.auth.entities.User;
 import com.dandbazaar.back.common.SwordPriceService;
@@ -69,6 +70,9 @@ public class Game {
 
     @OneToMany(mappedBy = "destination", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PurchaseRegistry> beingDestination;
+
+    @OneToMany(mappedBy = "originGame", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Lore> lores;
 
     public GameRequest toGameRequest() {
         GameRequest.GameRequestBuilder builder = GameRequest.builder();
