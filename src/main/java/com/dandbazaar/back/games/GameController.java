@@ -35,7 +35,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class GameController {
 
-    
     @Autowired
     private GameRepository gameRepo;
 
@@ -65,7 +64,7 @@ public class GameController {
     public List<GameRequest> byuser(Authentication auth) {
 
         log.info("Buscando al usuario: " + auth.getName());
-        
+
         User user = findUser(auth);
 
         if (user.getId() == 0) {
@@ -79,7 +78,9 @@ public class GameController {
         log.info("La cantidad de juegos que el usuario tiene es: " + games.size());
 
         return games.stream()
-                .map(game -> { return game.toGameRequest(); })
+                .map(game -> {
+                    return game.toGameRequest();
+                })
                 .toList();
     }
 
@@ -105,19 +106,18 @@ public class GameController {
 
         Game savedGame = gameRepo.saveAndFlush(game);
 
-        return savedGame.toGameRequest();        
+        return savedGame.toGameRequest();
     }
 
     @PutMapping("/{id}")
-    public GameRequest updateMoney(Authentication auth, @RequestBody CurrencyUpdatePost update, @PathVariable Long id) throws Unauthorized{
+    public GameRequest updateMoney(Authentication auth, @RequestBody CurrencyUpdatePost update, @PathVariable Long id)
+            throws Unauthorized {
         User user = findUser(auth);
         Game game = gameRepo.findById(id).orElseThrow();
 
         if (user.getGames().contains(game)) {
             game.updateCurrency(update);
         }
-        
-        
 
         game = gameRepo.save(game);
 
@@ -125,18 +125,28 @@ public class GameController {
     }
 
     @DeleteMapping("/delete/{originId}/{destinationId}")
-    public GameRequest deleteGameAndTransfer(Authentication auth, @PathVariable Long originId, @PathVariable Long destinationId) throws Exception {
+    public GameRequest deleteGameAndTransfer(Authentication auth, @PathVariable Long originId,
+            @PathVariable Long destinationId) throws Exception {
         User user = userRepo.findByUsername(auth.getName())
-            .orElseThrow();
+                .orElseThrow();
+
+        log.info("Usuario encontrado: " + user.getUsername());
 
         Game origin = gameRepo.findById(originId)
-            .orElseThrow();
+                .orElseThrow();
+
+        log.info("Origin encontrado: " + origin.getName());
         Game destination = gameRepo.findById(destinationId)
-            .orElseThrow();
+                .orElseThrow();
+
+        log.info("Destino encontrado: " + destination.getName());
 
         List<Item> items = origin.getItems();
 
+        log.info("El origen tiene " + items.size() + " juegos");
+
         if (!user.getGames().contains(origin) || !user.getGames().contains(destination)) {
+            log.error("El usuario no tiene los juegos");
             throw new Exception("No tienes los juegos");
         }
 
@@ -147,13 +157,17 @@ public class GameController {
             return item;
         }).toList();
 
+        log.info("Propiedades de los items cambiadas, comenzando guardado...");
         itemRepo.saveAllAndFlush(items);
+        log.info("Mensajes guardados");
         Game updatedRepo = gameRepo.findById(destinationId)
-            .orElseThrow();
+                .orElseThrow();
+        log.info("Juego actualizado");
 
         gameRepo.delete(origin);
-
-
+        log.info("Juego origen eliminado");
+        
+        log.info("Enviando repositorio actualizado");
         return updatedRepo.toGameRequest();
     }
 }
