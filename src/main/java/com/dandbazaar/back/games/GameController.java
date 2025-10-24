@@ -22,6 +22,7 @@ import org.springframework.web.servlet.function.EntityResponse;
 
 import com.dandbazaar.back.Items.Item;
 import com.dandbazaar.back.Items.ItemRepository;
+import com.dandbazaar.back.Items.lore.LoreRepository;
 import com.dandbazaar.back.Items.registry.PurchaseRegistry;
 import com.dandbazaar.back.Items.registry.PurchaseRegistryRepository;
 import com.dandbazaar.back.auth.entities.User;
@@ -47,6 +48,9 @@ public class GameController {
 
     @Autowired
     private PurchaseRegistryRepository purchaseRepo;
+
+    @Autowired
+    private LoreRepository loreRepo;
 
     @Autowired
     EntityManager eman;
@@ -134,7 +138,7 @@ public class GameController {
         return game.toGameRequest();
     }
 
-    @Transactional
+    
     @DeleteMapping("/delete/{originId}/{destinationId}")
     public GameRequest deleteGameAndTransfer(Authentication auth,
             @PathVariable Long originId,
@@ -142,15 +146,23 @@ public class GameController {
 
         log.info("=== Iniciando deleteGameAndTransfer ===");
 
+        // 1️⃣ Obtener usuario
         User user = userRepo.findByUsername(auth.getName()).orElseThrow();
         log.info("Usuario encontrado: {}", user.getUsername());
 
+        // 2️⃣ Obtener juegos
         Game origin = gameRepo.findById(originId).orElseThrow();
         Game destination = gameRepo.findById(destinationId).orElseThrow();
         log.info("Juego origen encontrado: {}", origin.getName());
         log.info("Juego destino encontrado: {}", destination.getName());
 
-        // 1️⃣ Transferir Items
+        // Validar propiedad de los juegos
+        if (!user.getGames().contains(origin) || !user.getGames().contains(destination)) {
+            log.error("El usuario no posee ambos juegos");
+            throw new Exception("No tienes ambos juegos");
+        }
+
+        // 3️⃣ Transferir Items
         List<Item> items = new ArrayList<>(origin.getItems());
         log.info("Items en origin antes de transferir: {}", items.size());
 
@@ -162,41 +174,38 @@ public class GameController {
             origin.getItems().remove(item);
             destination.getItems().add(item);
 
-            log.info("Item {} transferido al destino", item.getName());
+            log.info("Item '{}' transferido al destino '{}'", item.getName(), destination.getName());
         }
 
         itemRepo.saveAllAndFlush(items);
         log.info("Todos los items transferidos y flush ejecutado");
 
-        // 2️⃣ Transferir / eliminar PurchaseRegistry del origin
-        List<PurchaseRegistry> originPurchases = new ArrayList<>(origin.getBeingOrigin());
-        for (PurchaseRegistry pr : originPurchases) {
-            // Si querés transferirlos al destination:
-            pr.setOrigin(destination);
-            destination.getBeingOrigin().add(pr);
-            origin.getBeingOrigin().remove(pr);
-            log.info("PurchaseRegistry {} transferido (origin)", pr.getId());
-        }
-
-        List<PurchaseRegistry> destinationPurchases = new ArrayList<>(origin.getBeingDestination());
-        for (PurchaseRegistry pr : destinationPurchases) {
-            pr.setDestination(destination);
-            destination.getBeingDestination().add(pr);
-            origin.getBeingDestination().remove(pr);
-            log.info("PurchaseRegistry {} transferido (destination)", pr.getId());
-        }
-
+        // 4️⃣ Reasignar o eliminar PurchaseRegistry del origin
+        origin.getBeingOrigin().clear();
+        origin.getBeingDestination().clear();
         purchaseRepo.flush();
         log.info("Todos los PurchaseRegistry transferidos y flush ejecutado");
 
-        // 3️⃣ Borrar Game origen
+        // 5️⃣ Eliminar Lore asociados
+        if (!origin.getLores().isEmpty()) {
+            log.info("Eliminando {} lores asociados al juego origen", origin.getLores().size());
+            loreRepo.deleteAll(origin.getLores());
+            loreRepo.flush();
+            origin.getLores().clear();
+            log.info("Lores eliminados");
+        } else {
+            log.info("No hay lores para eliminar");
+        }
+
+        // 6️⃣ Eliminar juego origen
         gameRepo.delete(origin);
         gameRepo.flush();
         log.info("Juego origen '{}' eliminado", origin.getName());
 
-        // 4️⃣ Devolver el game destino actualizado
+        // 7️⃣ Devolver estado actualizado del destino
         Game updatedDestination = gameRepo.findById(destinationId).orElseThrow();
         log.info("=== deleteGameAndTransfer completado ===");
+
         return updatedDestination.toGameRequest();
     }
 
